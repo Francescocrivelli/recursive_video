@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from './ui/button';
-import { useReactMediaRecorder } from 'react-media-recorder';
 
 interface AudioRecorderProps {
-  onTranscriptionComplete: (transcript: string) => void;
+  onAudioReady: (audioBlob: Blob) => void;
+  isProcessing: boolean;
 }
 
-export function AudioRecorder({ onTranscriptionComplete }: AudioRecorderProps) {
+export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const startRecording = async () => {
     try {
@@ -43,35 +43,18 @@ export function AudioRecorder({ onTranscriptionComplete }: AudioRecorderProps) {
 
     mediaRecorder.onstop = async () => {
       const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-      await handleAudioUpload(audioBlob);
+      onAudioReady(audioBlob);
     };
   };
 
-  const handleAudioUpload = async (blob: Blob) => {
-    setIsProcessing(true);
-    const formData = new FormData();
-    formData.append('audio', blob);
-
-    try {
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const data = await response.json();
-      onTranscriptionComplete(data.transcript);
-    } catch (error) {
-      console.error('Transcription failed:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    onAudioReady(file);
+  };
 
-    await handleAudioUpload(file);
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -84,14 +67,7 @@ export function AudioRecorder({ onTranscriptionComplete }: AudioRecorderProps) {
         >
           {isRecording ? 'Stop Recording' : 'Start Recording'}
         </Button>
-
       </div>
-
-      {isProcessing && (
-        <div className="text-center text-blue-500">
-          Processing audio...
-        </div>
-      )}
     </div>
   );
 }
