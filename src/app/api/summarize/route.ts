@@ -19,7 +19,7 @@ export async function POST(request: Request) {
         {
           role: 'system',
           content:
-            'You are another doctor summarizing the key points of the therapy session in a different way but with the same formats. Here is the dialogue:',
+            'You are a doctor summarizing a therapy session such that when you or the client can read it anytime and understood what happened and further steps. Here is the dialogue:',
         },
         {
           role: 'user',
