@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 
 interface AudioRecorderProps {
@@ -12,7 +12,6 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const startRecording = async () => {
     try {
@@ -22,7 +21,7 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
       setAudioChunks([]);
 
       recorder.ondataavailable = (event) => {
-        setAudioChunks(current => [...current, event.data]);
+        setAudioChunks((current) => [...current, event.data]);
       };
 
       recorder.start();
@@ -34,27 +33,17 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
 
   const stopRecording = async () => {
     if (!mediaRecorder) return;
-    
+
     mediaRecorder.stop();
     setIsRecording(false);
-    
+
     const tracks = mediaRecorder.stream.getTracks();
-    tracks.forEach(track => track.stop());
+    tracks.forEach((track) => track.stop());
 
     mediaRecorder.onstop = async () => {
       const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
       onAudioReady(audioBlob);
     };
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    onAudioReady(file);
-  };
-
-  const triggerFileUpload = () => {
-    fileInputRef.current?.click();
   };
 
   return (

@@ -8,7 +8,7 @@ import path from 'path';
 const execPromise = promisify(exec);
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY!,
 });
 
 /**
@@ -17,20 +17,20 @@ const openai = new OpenAI({
  * @returns Corresponding file extension
  */
 function getFileExtension(mimeType: string): string {
-  switch (mimeType) {
-    case 'audio/mpeg':
-      return '.mp3';
-    case 'audio/wav':
-      return '.wav';
-    case 'audio/mp4':
-      return '.mp4';
-    case 'audio/x-m4a':
-      return '.m4a';
-    case 'audio/mp3':
-      return '.mp3';
-    default:
-      throw new Error(`Unsupported audio type: ${mimeType}`);
+  const mimeToExt: Record<string, string> = {
+    'audio/mpeg': '.mp3',
+    'audio/wav': '.wav',
+    'audio/mp4': '.mp4',
+    'audio/x-m4a': '.m4a',
+    'audio/mp3': '.mp3',
+  };
+
+  const extension = mimeToExt[mimeType];
+  if (!extension) {
+    throw new Error(`Unsupported audio type: ${mimeType}`);
   }
+
+  return extension;
 }
 
 /**
@@ -49,20 +49,20 @@ async function splitAudio(filePath: string, mimeType: string, chunkDuration: num
   const fileExtension = getFileExtension(mimeType);
   const outputPattern = path.join(outputDir, `chunk_%03d${fileExtension}`);
 
-  // Properly escape the file paths
   const command = `ffmpeg -i "${filePath}" -f segment -segment_time ${chunkDuration} -c copy "${outputPattern}"`;
   await execPromise(command);
 
   // Return paths to the generated chunks
-  const chunks = fs.readdirSync(outputDir)
+  return fs
+    .readdirSync(outputDir)
     .filter((file) => file.startsWith('chunk_'))
     .map((file) => path.join(outputDir, file));
-
-  return chunks;
 }
 
-
 export async function POST(request: Request) {
+  let tempFilePath: string | null = null;
+  let chunks: string[] = [];
+
   try {
     const formData = await request.formData();
     const file = formData.get('audio') as File;
@@ -74,18 +74,21 @@ export async function POST(request: Request) {
     // Validate file type
     const validAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/x-m4a', 'audio/mp3'];
     if (!validAudioTypes.includes(file.type)) {
-      return NextResponse.json({
-        error: `Invalid file type: ${file.type}. Supported types are: ${validAudioTypes.join(', ')}`,
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `Invalid file type: ${file.type}. Supported types are: ${validAudioTypes.join(', ')}`,
+        },
+        { status: 400 }
+      );
     }
 
     // Convert the File to a local file path
-    const tempFilePath = path.join('/tmp', file.name);
+    tempFilePath = path.join('/tmp', file.name);
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(tempFilePath, buffer);
 
     // Split the file into chunks
-    const chunks = await splitAudio(tempFilePath, file.type);
+    chunks = await splitAudio(tempFilePath, file.type);
 
     let finalTranscript = '';
     for (const chunk of chunks) {
@@ -102,35 +105,28 @@ export async function POST(request: Request) {
 
     // Clean up temporary files
     fs.unlinkSync(tempFilePath);
-    for (const chunk of chunks) {
-      fs.unlinkSync(chunk);
-    }
+    chunks.forEach((chunk) => fs.unlinkSync(chunk));
 
     return NextResponse.json({ text: finalTranscript.trim() });
   } catch (error: unknown) {
-    console.error('Transcription error:', error);
-  
-    if (typeof error === 'object' && error !== null) {
-      if ('status' in error && typeof (error as any).status === 'number') {
-        // Safely access error.status
-        return NextResponse.json(
-          { error: `Unexpected API error`, status: (error as any).status },
-          { status: (error as any).status }
-        );
-      }
-  
-      if ('message' in error) {
-        return NextResponse.json(
-          { error: `Invalid request: ${(error as { message: string }).message}` },
-          { status: 400 }
-        );
-      }
+    // Clean up on error
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      fs.unlinkSync(tempFilePath);
     }
-  
-    // Fallback for unknown error types
-    return NextResponse.json(
-      { error: 'An unknown error occurred' },
-      { status: 500 }
-    );
+    if (chunks.length) {
+      chunks.forEach((chunk) => {
+        if (fs.existsSync(chunk)) {
+          fs.unlinkSync(chunk);
+        }
+      });
+    }
+
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    console.error('Unknown error:', error);
+    return NextResponse.json({ error: 'An unknown error occurred' }, { status: 500 });
   }
 }
