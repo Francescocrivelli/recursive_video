@@ -8,33 +8,50 @@ A Next.js-based platform for automated therapy session recording and analysis.
 
 ```mermaid
 flowchart TD
-    subgraph Frontend["Next.js Application"]
-        Pages["Pages\n(Dashboard/Auth)"]
-        Components["React Components"]
+    subgraph Client["Next.js Application"]
+        direction TB
+        Pages["Pages"]
+        Components["Components"]
         APIRoutes["API Routes"]
+        
+        subgraph Pages
+            Auth["Authentication\n(Login/Register)"]
+            TherapistFlow["Therapist Flow"]
+            UserFlow["User Flow"]
+        end
+        
+        subgraph TherapistFlow
+            SelectType["Select Therapy Type\n& Patient"]
+            Session["Therapy Session\n(Recording/Analysis)"]
+        end
+        
+        subgraph UserFlow
+            Dashboard["Patient Dashboard\n(Reports/Progress)"]
+        end
     end
 
-    subgraph Services["Cloud Services"]
-        DB[(Firebase/MongoDB)]
+    subgraph Backend["Backend Services"]
+        Firebase["Firebase\n- Authentication\n- User Management\n- Role-based Access"]
+        DB[(Firestore\n- Patient Data\n- Session Reports)]
         Storage["Cloud Storage\n(Audio/Transcripts)"]
-        Queue["Message Queue"]
     end
 
     subgraph AI["AI Processing"]
-        STT["Speech-to-Text\n(Whisper API)"]
-        Analysis["GPT-4 Analysis"]
+        Whisper["Whisper API\n(Transcription)"]
+        GPT["GPT-4/3.5\n(Analysis/Summary)"]
     end
 
-    Components -->|Client Actions| Pages
-    Pages -->|Server Actions| APIRoutes
-    APIRoutes -->|Process| Queue
-    Queue -->|Audio| STT
-    STT -->|Text| Analysis
-    Analysis -->|Results| APIRoutes
-    APIRoutes -->|Store| DB
-    DB -->|Fetch| Pages
+    Auth -->|Authenticate| Firebase
+    TherapistFlow -->|Fetch Patients| DB
+    Session -->|Store Audio| Storage
+    Session -->|Transcribe| Whisper
+    Whisper -->|Process| GPT
+    GPT -->|Store Report| DB
+    UserFlow -->|Fetch Reports| DB
     
-    style Frontend fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Client fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Backend fill:#e6f3ff,stroke:#333,stroke-width:2px
+    style AI fill:#f0fff0,stroke:#333,stroke-width:2px
 ```
 
 ## Tech Stack
@@ -96,6 +113,12 @@ The project uses a feature-based structure within the Next.js App Router pattern
 2. Implement changes following the project structure
 3. Write tests for new features
 4. Submit a pull request
+
+
+
+
+
+
 
 ## Team
 
