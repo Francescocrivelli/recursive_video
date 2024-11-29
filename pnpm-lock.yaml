@@ -30,7 +30,7 @@ importers:
         specifier: ^10.0.0
         version: 10.4.20(postcss@8.4.49)
       firebase:
-        specifier: ^9.0.0
+        specifier: ^9.23.0
         version: 9.23.0
       firebase-admin:
         specifier: ^13.0.1

@@ -16,7 +16,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@supabase/supabase-js": "^2.46.1",
     "autoprefixer": "^10.0.0",
-    "firebase": "^9.0.0",
+    "firebase": "^9.23.0",
     "firebase-admin": "^13.0.1",
     "formidable": "^3.5.2",
     "lucide-react": "^0.456.0",

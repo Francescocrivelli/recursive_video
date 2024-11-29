@@ -11,6 +11,11 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Check if the config is properly loaded
+if (!firebaseConfig.apiKey) {
+  console.error('Firebase configuration is missing or incorrect');
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -56,3 +61,4 @@ export {
   getUserRole, 
   createPatient 
 };
+
