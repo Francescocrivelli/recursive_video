@@ -30,7 +30,7 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
       console.error('Failed to start recording:', error);
     }
   };
-
+ 
   const stopRecording = async () => {
     if (!mediaRecorder) return;
 
