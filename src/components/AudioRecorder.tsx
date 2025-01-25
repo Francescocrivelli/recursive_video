@@ -12,22 +12,55 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [timerInterval, setTimerInterval] = useState(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  const checkMicrophoneSupport = () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setPermissionError('Your browser does not support audio recording.');
+      return false;
+    }
+    return true;
+  };
 
   const startRecording = async () => {
+    if (!checkMicrophoneSupport()) return;
     try {
+      setPermissionError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      setMediaRecorder(recorder);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm',
+        audioBitsPerSecond: 128000
+      });
+      const audioChunks = [];
+
+      setRecordingTime(0);
+      const interval = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      setTimerInterval(interval as any);
+
+      setMediaRecorder(mediaRecorder);
       setAudioChunks([]);
 
-      recorder.ondataavailable = (event) => {
-        setAudioChunks((current) => [...current, event.data]);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setAudioChunks((current) => [...current, event.data]);
+        }
       };
 
-      recorder.start();
+      // Request data every 250ms to ensure we capture everything
+      mediaRecorder.start(250);
       setIsRecording(true);
     } catch (error) {
       console.error('Failed to start recording:', error);
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setPermissionError('Microphone access was denied. Please allow microphone access in your browser settings.');
+      } else {
+        setPermissionError('An error occurred while trying to access the microphone.');
+      }
     }
   };
 
@@ -40,10 +73,32 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
     const tracks = mediaRecorder.stream.getTracks();
     tracks.forEach((track) => track.stop());
 
-    mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-      onAudioReady(audioBlob);
-    };
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+    const url = URL.createObjectURL(audioBlob);
+    setAudioUrl(url);
+    
+    // Log audio size information
+    const sizeInBytes = audioBlob.size;
+    const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+    console.log(`Audio size: ${sizeInBytes} bytes (${sizeInMB} MB)`);
+    
+    onAudioReady(audioBlob);
+  };
+
+  const handleDownload = () => {
+    if (audioUrl) {
+      const a = document.createElement('a');
+      a.href = audioUrl;
+      a.download = 'recording.wav';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   return (
@@ -57,6 +112,17 @@ export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps
           {isRecording ? 'Stop Recording' : 'Start Recording'}
         </Button>
       </div>
+      <div className="recording-timer">
+        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+      </div>
+      {audioUrl && (
+        <div className="space-y-2">
+          <audio controls src={audioUrl} className="w-full" />
+          <Button onClick={handleDownload} variant="outline" className="w-full">
+            Download Recording
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

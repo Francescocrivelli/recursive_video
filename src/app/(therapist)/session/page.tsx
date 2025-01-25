@@ -44,7 +44,7 @@ export default function SessionPage() {
       formData.append('audio', audioBlob);
 
       // Transcribe audio
-      const transcribeResponse = await fetch('../../api/transcribe', {
+      const transcribeResponse = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
       });

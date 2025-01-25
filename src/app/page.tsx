@@ -1,35 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.push('/login');
-  }, [router]);
-
-  return null;
-}
-
-/**
- * This is the main page component for a therapy session recording application.
- * It provides functionality to:
- * - Record audio using the AudioRecorder component
- * - Transcribe the recorded audio to text
- * - Translate the transcription
- * - Generate a summary of the therapy session
- * 
- * The component manages various states including:
- * - transcript: The text transcribed from audio
- * - translation: The translated version of the transcript
- * - summary: A therapeutic summary of the session
- * - processing states and error handling
- */
-
-'use client';
-
 import { useState } from 'react';
 import { AudioRecorder } from '@/components/AudioRecorder';
 import { Button } from '@/components/ui/button';
