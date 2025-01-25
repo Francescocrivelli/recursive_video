@@ -31,7 +31,7 @@ export default function SessionPage() {
 
   useEffect(() => {
     if (!therapyType || !patientId) {
-      router.push('/therapist/select-therapy');
+      router.push('/select-therapy');
     }
   }, [therapyType, patientId, router]);
 
@@ -94,7 +94,7 @@ export default function SessionPage() {
         summary: sessionState.summary,
       });
 
-      router.push('/therapist/select-therapy');
+      router.push('/select-therapy');
     } catch (error) {
       console.error('Error saving session:', error);
       setSessionState(prev => ({
