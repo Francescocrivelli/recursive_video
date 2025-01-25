@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { db } from '@/lib/firebase'; // Import Firestore database
-import { doc, setDoc } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid'; // Import UUID library
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY!,
 });
+
+console.log('Summarize API Key present:', !!process.env.OPENAI_API_KEY);
 
 export async function POST(request: Request) {
   try {
-    const { text, patientId, therapyType } = await request.json();
+    const { text } = await request.json();
+    console.log('Received text length:', text?.length);
 
     if (!text) {
       return NextResponse.json({ error: 'No text provided' }, { status: 400 });
@@ -37,18 +37,12 @@ export async function POST(request: Request) {
       throw new Error('No summary generated');
     }
 
-    // Store the summary in Firestore
-    const sessionId = uuidv4(); // Generate a unique session ID
-    await setDoc(doc(db, 'sessions', sessionId), {
-      patientId,
-      therapyType,
-      date: new Date().toISOString(),
-      summary,
-    });
-
     return NextResponse.json({ summary });
   } catch (error) {
     console.error('Summarization error:', error);
-    return NextResponse.json({ error: 'Summarization failed' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Summarization failed', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

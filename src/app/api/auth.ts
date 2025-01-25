@@ -31,16 +31,20 @@ export default NextAuth({
             const userDoc = await getDoc(doc(db, "users", user.email));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                user.role = userData.role || "patient";
+                // Need to extend the User type to include role
+                (user as any).role = userData.role || "patient";
             } else {
-                user.role = "patient";
+                (user as any).role = "patient";
                 const verificationToken = uuidv4();
                 await sendVerificationEmail(user.email, verificationToken);
             }
             return true;
         },
         async session({ session, user }) {
-            session.user.role = user.role;
+            if (session.user) {
+                // Need to extend the Session type to include role
+                (session.user as any).role = (user as any).role;
+            }
             return session;
         },
     },

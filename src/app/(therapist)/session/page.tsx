@@ -39,9 +39,10 @@ export default function SessionPage() {
     setSessionState(prev => ({ ...prev, isProcessing: true, error: null }));
     
     try {
-      // Create form data for audio file
       const formData = new FormData();
       formData.append('audio', audioBlob);
+      formData.append('patientId', patientId || 'unknown');
+      formData.append('therapyType', therapyType || 'unknown');
 
       // Transcribe audio
       const transcribeResponse = await fetch('/api/transcribe', {
@@ -49,12 +50,22 @@ export default function SessionPage() {
         body: formData,
       });
       
-      if (!transcribeResponse.ok) throw new Error('Transcription failed');
+      if (!transcribeResponse.ok) {
+        const errorData = await transcribeResponse.json();
+        throw new Error(errorData.error || 'Transcription failed');
+      }
       
       const { text: transcription } = await transcribeResponse.json();
       
+      // Update state with transcription immediately
+      setSessionState(prev => ({
+        ...prev,
+        transcription,
+        isProcessing: true, // Keep processing for summary
+      }));
+
       // Generate summary
-      const summarizeResponse = await fetch('../../api/summarize', {
+      const summarizeResponse = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: transcription }),
@@ -66,7 +77,6 @@ export default function SessionPage() {
 
       setSessionState(prev => ({
         ...prev,
-        transcription,
         summary,
         isProcessing: false,
       }));
@@ -126,10 +136,18 @@ export default function SessionPage() {
           </div>
         )}
 
+        {sessionState.isProcessing && (
+          <div className="text-center py-4">
+            <div className="animate-pulse text-gray-600">
+              Processing audio...
+            </div>
+          </div>
+        )}
+
         {sessionState.transcription && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Transcription</h2>
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
               {sessionState.transcription}
             </div>
           </div>

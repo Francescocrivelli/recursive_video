@@ -18,6 +18,8 @@ export default function TherapyPage() {
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob);
+      formData.append('patientId', 'test-patient'); // Temporary ID for testing
+      formData.append('therapyType', 'test-therapy'); // Temporary type for testing
 
       // Handle transcription
       const transcribeResponse = await fetch('/api/transcribe', {
@@ -26,7 +28,8 @@ export default function TherapyPage() {
       });
       
       if (!transcribeResponse.ok) {
-        throw new Error('Transcription failed');
+        const errorData = await transcribeResponse.json();
+        throw new Error(errorData.error || 'Transcription failed');
       }
 
       const transcribeData = await transcribeResponse.json();
