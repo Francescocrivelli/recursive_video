@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { db } from '@/lib/firebase'; // Import Firestore database
+import { doc, setDoc } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid'; // Import UUID library
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,7 +10,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json();
+    const { text, patientId, therapyType } = await request.json();
 
     if (!text) {
       return NextResponse.json({ error: 'No text provided' }, { status: 400 });
@@ -33,6 +36,15 @@ export async function POST(request: Request) {
     if (!summary) {
       throw new Error('No summary generated');
     }
+
+    // Store the summary in Firestore
+    const sessionId = uuidv4(); // Generate a unique session ID
+    await setDoc(doc(db, 'sessions', sessionId), {
+      patientId,
+      therapyType,
+      date: new Date().toISOString(),
+      summary,
+    });
 
     return NextResponse.json({ summary });
   } catch (error) {

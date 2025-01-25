@@ -4,6 +4,9 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
+import { db } from '@/lib/firebase'; // Import Firestore database
+import { doc, setDoc } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 
 const execPromise = promisify(exec);
 
@@ -64,6 +67,9 @@ export async function POST(request: Request) {
   let chunks: string[] = [];
 
   try {
+
+    const {patientId, therapyType } = await request.json(); // Expect patientId and therapyType
+
     const formData = await request.formData();
     const file = formData.get('audio') as File;
 
@@ -102,6 +108,19 @@ export async function POST(request: Request) {
 
       finalTranscript += response.text + ' ';
     }
+    
+    if (!finalTranscript) {
+      return NextResponse.json({ error: 'Transcription failed' }, { status: 400 });
+    }
+
+    // Store the transcription in Firestore
+    const sessionId = uuidv4(); // Generate a unique session ID
+    await setDoc(doc(db, 'sessions', sessionId), {
+      patientId,
+      therapyType,
+      date: new Date().toISOString(),
+      finalTranscript,
+    });
 
     // Clean up temporary files
     fs.unlinkSync(tempFilePath);
