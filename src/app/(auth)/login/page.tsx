@@ -39,6 +39,8 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, googleProvider);
       const role = await getUserRole(result.user.uid);
       
+      document.cookie = `session=${role}; path=/`; // Example of setting a session cookie
+
       if (role) {
         // User has a role, redirect accordingly
         if (role === 'therapist') {

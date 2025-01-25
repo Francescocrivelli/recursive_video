@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const session = request.cookies.get('session')
+  console.log('Session Cookie:', session); // Log the session cookie
 
   // Get the pathname of the request
   const { pathname } = request.nextUrl
@@ -15,6 +16,7 @@ export function middleware(request: NextRequest) {
 
   // Check authentication
   if (!session) {
+    console.log('No session found, redirecting to /login'); // Log redirection
     const response = NextResponse.redirect(new URL('/login', request.url))
     return response
   }
