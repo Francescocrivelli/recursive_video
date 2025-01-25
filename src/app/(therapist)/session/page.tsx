@@ -44,7 +44,7 @@ export default function SessionPage() {
       formData.append('audio', audioBlob);
 
       // Transcribe audio
-      const transcribeResponse = await fetch('/api/transcribe', {
+      const transcribeResponse = await fetch('../../api/transcribe', {
         method: 'POST',
         body: formData,
       });
@@ -54,7 +54,7 @@ export default function SessionPage() {
       const { text: transcription } = await transcribeResponse.json();
       
       // Generate summary
-      const summarizeResponse = await fetch('/api/summarize', {
+      const summarizeResponse = await fetch('../../api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: transcription }),
