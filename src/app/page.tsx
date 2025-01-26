@@ -1,11 +1,31 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 
 export default function LandingPage() {
   const router = useRouter();
+  const { user, userRole, isInitialized } = useAuth();
 
+  useEffect(() => {
+    if (isInitialized && user && userRole) {
+      // If user is logged in and has a role, redirect accordingly
+      if (userRole === 'therapist') {
+        router.push('/select-therapy');
+      } else if (userRole === 'patient') {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, userRole, isInitialized, router]);
+
+  // If still loading auth state, show nothing to prevent flash
+  if (!isInitialized) {
+    return null;
+  }
+
+  // Show landing page for non-authenticated users
   return (
     <main className="min-h-screen bg-background">
       {/* Hero Section */}

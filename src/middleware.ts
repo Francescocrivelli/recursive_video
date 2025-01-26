@@ -3,40 +3,35 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const session = request.cookies.get('session')
-  console.log('Session Cookie:', session); // Log the session cookie
-
-  // Get the pathname of the request
   const { pathname } = request.nextUrl
 
-  // Public paths that don't require authentication
-  const publicPaths = ['/', '/login', '/register', '/role-selection']
+  // Allow public paths without authentication
+  const publicPaths = ['/', '/login', '/role-selection', '/register']
   if (publicPaths.includes(pathname)) {
     return NextResponse.next()
   }
 
-  // Check authentication
+  // Check authentication for all other routes
   if (!session) {
-    console.log('No session found, redirecting to /login'); // Log redirection
-    const response = NextResponse.redirect(new URL('/login', request.url))
-    return response
+    // If not authenticated and trying to access protected route, redirect to landing page
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Route protection based on path prefix
+  // Route protection based on role
   if (pathname.startsWith('/patient')) {
-    const isPatient = session.value.includes('patient');
-    const isTherapist = session.value.includes('therapist');
+    const isPatient = session.value.includes('patient')
+    const isTherapist = session.value.includes('therapist')
     
-    // Allow both patients and therapists to access patient routes
     if (!isPatient && !isTherapist) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
   // Therapist-only routes
   if (pathname.startsWith('/therapist')) {
-    const isTherapist = session.value.includes('therapist');
+    const isTherapist = session.value.includes('therapist')
     if (!isTherapist) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
@@ -48,10 +43,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)', 
   ],
 }
