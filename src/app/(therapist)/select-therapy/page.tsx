@@ -50,6 +50,16 @@ export default function TherapistSelectTherapy() {
           </div>
         </div>
         
+        <div className="mt-8">
+          <Button 
+            onClick={() => router.push('/patient/dashboard')}
+            className="w-full"
+            variant="outline"
+          >
+            View All Patients
+          </Button>
+        </div>
+
         {selectedTherapy && (
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-4">Select Patient</h2>

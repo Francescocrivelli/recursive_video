@@ -22,19 +22,21 @@ export function middleware(request: NextRequest) {
   }
 
   // Route protection based on path prefix
-  if (pathname.startsWith('/therapist')) {
-    // Verify therapist role - you might want to decode the session token and verify the role
-    const isTherapist = session.value.includes('therapist') // This is a simplified check
-    if (!isTherapist) {
-      return NextResponse.redirect(new URL('/patient/dashboard', request.url))
+  if (pathname.startsWith('/patient')) {
+    const isPatient = session.value.includes('patient');
+    const isTherapist = session.value.includes('therapist');
+    
+    // Allow both patients and therapists to access patient routes
+    if (!isPatient && !isTherapist) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
-  if (pathname.startsWith('/patient')) {
-    // Verify patient role
-    const isPatient = session.value.includes('patient') // This is a simplified check
-    if (!isPatient) {
-      return NextResponse.redirect(new URL('/therapist/select-therapy', request.url))
+  // Therapist-only routes
+  if (pathname.startsWith('/therapist')) {
+    const isTherapist = session.value.includes('therapist');
+    if (!isTherapist) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 

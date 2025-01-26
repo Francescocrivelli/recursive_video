@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { AudioRecorder } from '@/components/AudioRecorder';
 import { Button } from '@/components/ui/button';
 import { v4 as uuidv4 } from 'uuid';
+import { Navigation } from '@/components/Navigation';
 
 interface SessionState {
   transcription: string;
@@ -116,6 +117,7 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen p-8 bg-background">
+          <Navigation onBack={() => router.push('/select-therapy')}/>
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Therapy Session</h1>

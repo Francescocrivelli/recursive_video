@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { assignUserRole } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { Navigation } from '@/components/Navigation';
+
 
 export default function RoleSelectionPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +42,7 @@ export default function RoleSelectionPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
+      <Navigation showBack={true} showHome={false} />
       <div className="max-w-md w-full space-y-8 p-8">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-bold">Select Your Role</h2>

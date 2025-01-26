@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { Navigation } from '@/components/Navigation';
+
 
 interface Session {
   id: string;
@@ -15,17 +17,27 @@ interface Session {
 export default function PatientDashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   useEffect(() => {
     const fetchSessions = async () => {
       if (!user) return;
 
       try {
-        const sessionsQuery = query(
-          collection(db, 'sessions'),
-          where('patientId', '==', user.uid)
-        );
+        let sessionsQuery;
+        
+        if (userRole === 'therapist') {
+          // Fetch all sessions for therapists
+          sessionsQuery = query(
+            collection(db, 'sessions')
+          );
+        } else {
+          // Fetch only patient's sessions
+          sessionsQuery = query(
+            collection(db, 'sessions'),
+            where('patientId', '==', user.uid)
+          );
+        }
         
         const sessionsSnapshot = await getDocs(sessionsQuery);
         const sessionsData = sessionsSnapshot.docs.map(doc => ({
@@ -56,7 +68,9 @@ export default function PatientDashboard() {
   return (
     <div className="min-h-screen p-8 bg-background">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Your Therapy Sessions</h1>
+        <h1 className="text-3xl font-bold mb-8">
+          {userRole === 'therapist' ? 'All Patient Sessions' : 'Your Therapy Sessions'}
+        </h1>
 
         {sessions.length === 0 ? (
           <div className="text-center py-8">
