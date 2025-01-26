@@ -20,6 +20,7 @@ interface SessionState {
   transcription: string;
   summary: string;
   isProcessing: boolean;
+  isRecording: boolean;
   error: string | null;
   insights: SessionInsights | null;
 }
@@ -29,6 +30,7 @@ export default function SessionPage() {
     transcription: '',
     summary: '',
     isProcessing: false,
+    isRecording: false,
     error: null,
     insights: null
   });
@@ -48,26 +50,40 @@ export default function SessionPage() {
   }, [therapyType, patientId, router]);
 
   const handleAudioReady = async (audioBlob: Blob) => {
-    setCurrentStep('processing');
     setSessionState(prev => ({ ...prev, isProcessing: true, error: null }));
-    
-    try {
-      // Audio processing logic...
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      formData.append('patientId', patientId || 'unknown');
-      formData.append('therapyType', therapyType || 'unknown');
+    let retryCount = 0;
+    const maxRetries = 3;
 
-      const transcribeResponse = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!transcribeResponse.ok) {
-        throw new Error('Transcription failed');
+    const attemptTranscription = async () => {
+      try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob);
+        formData.append('patientId', patientId || 'unknown');
+        formData.append('therapyType', therapyType || 'unknown');
+
+        const transcribeResponse = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!transcribeResponse.ok) {
+          const errorData = await transcribeResponse.json();
+          throw new Error(errorData.error || 'Transcription failed');
+        }
+
+        return await transcribeResponse.json();
+      } catch (error) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+          return attemptTranscription();
+        }
+        throw error;
       }
-      
-      const transcribeData = await transcribeResponse.json();
+    };
+
+    try {
+      const transcribeData = await attemptTranscription();
       const transcription = transcribeData.text;
       
       const [summaryResponse, insightsResponse] = await Promise.all([
@@ -100,6 +116,16 @@ export default function SessionPage() {
       
       setCurrentStep('review');
     } catch (error) {
+      console.error('Session processing error:', {
+        context: 'SessionPage - handleAudioReady',
+        error,
+        timestamp: new Date().toISOString(),
+        details: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack
+        } : 'Unknown error'
+      });
+
       setSessionState(prev => ({
         ...prev,
         isProcessing: false,
@@ -113,18 +139,16 @@ export default function SessionPage() {
 
     try {
       const sessionId = uuidv4();
-      const sessionData = {
+      await setDoc(doc(db, 'sessions', sessionId), {
         patientId,
         therapyType,
         date: new Date().toISOString(),
         transcription: sessionState.transcription,
         summary: sessionState.summary,
-        ...(sessionState.insights && {
-          sentiment: sessionState.insights.sentiment,
-          wordCloudData: sessionState.insights.wordCloudData,
-          speakingTime: sessionState.insights.speakingTime,
-        })
-      };
+        sentiment: sessionState.sentiment,
+        wordCloudData: sessionState.wordCloudData,
+        speakingTime: sessionState.speakingTime,
+      });
 
       await setDoc(doc(db, 'sessions', sessionId), sessionData);
       router.push('/select-therapy');
@@ -164,131 +188,52 @@ export default function SessionPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation onBack={() => setShowConfirmDialog(true)} />
-      
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold">Therapy Session</h1>
-            <div className="text-sm bg-gray-100 p-3 rounded-lg">
-              <p className="font-medium">{therapyType}</p>
-              <p className="text-gray-600">Patient ID: {patientId}</p>
-            </div>
+    <div className="min-h-screen p-8 bg-gradient-to-r from-gray-100 to-gray-200">
+      <Navigation onBack={() => router.push('/select-therapy')}/>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Therapy Session</h1>
+          <div className="text-sm">
+            <p>Therapy: {therapyType}</p>
+            <p>Patient ID: {patientId}</p>
           </div>
           
           {renderStepIndicator()}
         </div>
 
-        <div className="space-y-8">
-          {currentStep === 'recording' && (
-            <div className="bg-white rounded-xl shadow-sm p-8">
-              <h2 className="text-xl font-semibold mb-4">Record Session</h2>
-              <AudioRecorder
-                onAudioReady={handleAudioReady}
-                isProcessing={sessionState.isProcessing}
-              />
+        <AudioRecorder
+          onAudioReady={handleAudioReady}
+          isProcessing={sessionState.isProcessing}
+        />
+
+        {sessionState.error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {sessionState.error}
+          </div>
+        )}
+
+        {sessionState.isProcessing && (
+          <div className="text-center py-4">
+            <div className="animate-pulse text-gray-600">
+              Processing audio...
             </div>
-          )}
+          </div>
+        )}
 
-          {sessionState.isProcessing && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <div className="animate-pulse space-y-4">
-                <Brain className="w-12 h-12 mx-auto text-blue-500" />
-                <h2 className="text-xl font-semibold">Processing Session</h2>
-                <p className="text-gray-600">
-                  Analyzing audio and generating insights...
-                </p>
-              </div>
+        {sessionState.transcription && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Transcription</h2>
+            <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+              {sessionState.transcription}
             </div>
-          )}
+          </div>
+        )}
 
-          {sessionState.error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start space-x-4">
-              <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="font-semibold text-red-900">Processing Error</h3>
-                <p className="text-red-700">{sessionState.error}</p>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 'review' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h2 className="text-xl font-semibold mb-4">Summary</h2>
-                  <div className="prose max-w-none">
-                    {sessionState.summary}
-                  </div>
-                </div>
-
-                {sessionState.insights && (
-                  <div className="bg-white rounded-xl shadow-sm p-6">
-                    <h2 className="text-xl font-semibold mb-4">Session Insights</h2>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-blue-50 rounded-lg">
-                        <h3 className="font-medium text-blue-900 mb-2">Overall Sentiment</h3>
-                        <p className="text-blue-800">{sessionState.insights.sentiment}</p>
-                      </div>
-                      
-                      <div className="p-4 bg-purple-50 rounded-lg">
-                        <h3 className="font-medium text-purple-900 mb-2">Key Themes</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {sessionState.insights.wordCloudData.slice(0, 5).map((word) => (
-                            <span key={word} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                              {word}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-green-50 rounded-lg">
-                        <h3 className="font-medium text-green-900 mb-2">Speaking Time</h3>
-                        <div className="space-y-2">
-                          {Object.entries(sessionState.insights.speakingTime).map(([role, time]) => (
-                            <div key={role} className="flex items-center">
-                              <span className="w-24 text-green-800">{role}:</span>
-                              <div className="flex-1 h-2 bg-green-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-green-500 rounded-full"
-                                  style={{ width: `${time}%` }}
-                                />
-                              </div>
-                              <span className="ml-2 text-green-800 text-sm">{time}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-xl font-semibold mb-4">Transcription</h2>
-                <div className="prose max-w-none">
-                  {sessionState.transcription}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 'review' && (
-            <div className="flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep('recording')}
-              >
-                Record Again
-              </Button>
-              <Button
-                onClick={handleFinishSession}
-                className="min-w-[200px]"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Session
-              </Button>
+        {sessionState.summary && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Session Summary</h2>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              {sessionState.summary}
             </div>
           )}
         </div>
@@ -307,8 +252,9 @@ export default function SessionPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
-              onClick={() => router.push('/select-therapy')}
+              onClick={handleFinishSession}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
+              size="lg"
             >
               Leave Session
             </Button>

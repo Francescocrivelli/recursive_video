@@ -7,7 +7,17 @@ import { useState, useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
+// Define the Patient interface
+interface Patient {
+  id: string;
+  name: string;
+  lastSession: string;
+  therapyType: string;
+  status: string;
+}
 export default function TherapistSelectTherapy() {
   const { user } = useAuth();
   const router = useRouter();
@@ -16,13 +26,36 @@ export default function TherapistSelectTherapy() {
   const [showPatientList, setShowPatientList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('therapy');
+  const [patients, setPatients] = useState<Patient[]>([]);
 
-  // Placeholder patient data with more details
-  const patients = [
-    { id: '1', name: 'John Doe', lastSession: '2024-03-15', therapyType: 'Individual', status: 'Active' },
-    { id: '2', name: 'Jane Smith', lastSession: '2024-03-14', therapyType: 'Group', status: 'Active' },
-    { id: '3', name: 'Alice Johnson', lastSession: '2024-03-10', therapyType: 'Family', status: 'On Hold' }
-  ];
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const usersCollection = collection(db, 'users'); // Ensure correct collection name
+        const q = query(usersCollection, where('role', '==', 'patient'));
+        const usersSnapshot = await getDocs(q);
+  
+        const usersData: Patient[] = usersSnapshot.docs.map(doc => {
+          const data = doc.data();
+  
+          return {
+            id: doc.id,
+            name: data.name || 'Unknown', // Prevent undefined errors
+            lastSession: data.lastSession || 'No previous session',
+            therapyType: data.therapyType || 'N/A',
+            status: data.status || 'Inactive'
+          };
+        });
+  
+        setPatients(usersData);
+      } catch (error) {
+        console.error('Error fetching patients:', error);
+      }
+    };
+  
+    fetchPatients();
+  }, []);
+  
 
   const therapyTypes = [
     {
@@ -47,10 +80,6 @@ export default function TherapistSelectTherapy() {
       color: 'bg-purple-50 hover:bg-purple-100'
     }
   ];
-
-  const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleStartSession = () => {
     if (selectedTherapy && selectedPatient) {
@@ -158,54 +187,71 @@ export default function TherapistSelectTherapy() {
                         Actions
                       </th>
                     </tr>
-                  </thead>
+                    </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredPatients.map((patient) => (
-                      <motion.tr
-                        key={patient.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        whileHover={{ backgroundColor: '#f9fafb' }}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{patient.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {patient.lastSession}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {patient.therapyType}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            patient.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {patient.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push(`/patient/${patient.id}/dashboard`)}
+                    {patients.length > 0 ? (
+                      patients.map((patient) => (
+                        <motion.tr
+                          key={patient.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          whileHover={{ backgroundColor: '#f9fafb' }}
+                          className="transition-all"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-medium text-gray-900">{patient.name || "Unknown"}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                            {patient.lastSession || "No previous session"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                            {patient.therapyType || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                patient.status === "Active"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
                             >
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPatient(patient.id);
-                                setActiveTab('therapy');
-                              }}
-                            >
-                              Start Session
-                            </Button>
-                          </div>
+                              {patient.status || "Inactive"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(`/patient/${patient.id}/dashboard`)}
+                              >
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedPatient(patient.id);
+                                  setActiveTab("therapy");
+                                }}
+                              >
+                                Start Session
+                              </Button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-4 text-center text-gray-500"
+                        >
+                          No patients found.
                         </td>
-                      </motion.tr>
-                    ))}
+                      </tr>
+                    )}
                   </tbody>
+
                 </table>
               </div>
             </motion.div>

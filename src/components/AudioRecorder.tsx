@@ -6,9 +6,11 @@ import { Button } from './ui/button';
 interface AudioRecorderProps {
   onAudioReady: (audioBlob: Blob) => void;
   isProcessing: boolean;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
 }
 
-export function AudioRecorder({ onAudioReady, isProcessing }: AudioRecorderProps) {
+export function AudioRecorder({ onAudioReady, isProcessing, onStartRecording, onStopRecording }: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
