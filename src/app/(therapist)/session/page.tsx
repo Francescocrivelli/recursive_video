@@ -14,6 +14,7 @@ interface SessionState {
   transcription: string;
   summary: string;
   isProcessing: boolean;
+  isRecording: boolean;
   error: string | null;
   sentiment: string;
   wordCloudData: string[];
@@ -25,6 +26,7 @@ export default function SessionPage() {
     transcription: '',
     summary: '',
     isProcessing: false,
+    isRecording: false,
     error: null,
     sentiment: '',
     wordCloudData: [],
@@ -44,40 +46,25 @@ export default function SessionPage() {
   }, [therapyType, patientId, router]);
 
   const handleAudioReady = async (audioBlob: Blob) => {
-    setSessionState(prev => ({ ...prev, isProcessing: true, error: null }));
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    const attemptTranscription = async () => {
-      try {
-        const formData = new FormData();
-        formData.append('audio', audioBlob);
-        formData.append('patientId', patientId || 'unknown');
-        formData.append('therapyType', therapyType || 'unknown');
-
-        const transcribeResponse = await fetch('/api/transcribe', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!transcribeResponse.ok) {
-          const errorData = await transcribeResponse.json();
-          throw new Error(errorData.error || 'Transcription failed');
-        }
-
-        return await transcribeResponse.json();
-      } catch (error) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
-          return attemptTranscription();
-        }
-        throw error;
-      }
-    };
-
+    setSessionState(prev => ({ ...prev, isProcessing: true, error: null, isRecording: false }));
+    
     try {
-      const transcribeData = await attemptTranscription();
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      formData.append('patientId', patientId || 'unknown');
+      formData.append('therapyType', therapyType || 'unknown');
+
+      const transcribeResponse = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!transcribeResponse.ok) {
+        const errorData = await transcribeResponse.json();
+        throw new Error(errorData.error || 'Transcription failed');
+      }
+
+      const transcribeData = await transcribeResponse.json();
       const transcription = transcribeData.text;
 
       setSessionState(prev => ({
@@ -109,16 +96,7 @@ export default function SessionPage() {
       }));
 
     } catch (error) {
-      console.error('Session processing error:', {
-        context: 'SessionPage - handleAudioReady',
-        error,
-        timestamp: new Date().toISOString(),
-        details: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack
-        } : 'Unknown error'
-      });
-
+      console.error('Session processing error:', error);
       setSessionState(prev => ({
         ...prev,
         isProcessing: false,
@@ -135,14 +113,16 @@ export default function SessionPage() {
     try {
       const sessionId = uuidv4();
       await setDoc(doc(db, 'sessions', sessionId), {
-        patientId,
-        therapyType,
-        date: new Date().toISOString(),
-        transcription: sessionState.transcription,
-        summary: sessionState.summary,
-        sentiment: sessionState.sentiment,
-        wordCloudData: sessionState.wordCloudData,
-        speakingTime: sessionState.speakingTime,
+        sessionId, // Unique identifier for the session
+        patientId, // Reference to the patient
+        doctorId: 'therapistId', // Replace with actual therapist ID
+        therapyType, // Type of therapy conducted
+        date: new Date().toISOString(), // Session date & time
+        transcription: sessionState.transcription, // Full transcription of the session
+        summary: sessionState.summary, // AI-generated summary of the session
+        sentiment: sessionState.sentiment, // Sentiment analysis result
+        wordCloudData: sessionState.wordCloudData, // List of frequently used words
+        speakingTime: sessionState.speakingTime, // Speaking time breakdown
       });
 
       router.push('/select-therapy');
@@ -156,12 +136,12 @@ export default function SessionPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-r from-gray-100 to-gray-200">
-      <Navigation onBack={() => router.push('/select-therapy')}/>
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen p-8 bg-gradient-to-r from-purple-200 to-blue-200">
+      <Navigation onBack={() => router.push('/select-therapy')} />
+      <div className="max-w-4xl mx-auto space-y-8 bg-white rounded-xl shadow-lg p-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Therapy Session</h1>
-          <div className="text-sm">
+          <h1 className="text-4xl font-bold text-gray-800">Therapy Session</h1>
+          <div className="text-sm text-gray-600">
             <p>Therapy: {therapyType}</p>
             <p>Patient ID: {patientId}</p>
           </div>
@@ -170,6 +150,8 @@ export default function SessionPage() {
         <AudioRecorder
           onAudioReady={handleAudioReady}
           isProcessing={sessionState.isProcessing}
+          onStartRecording={() => setSessionState(prev => ({ ...prev, isRecording: true }))}
+          onStopRecording={() => setSessionState(prev => ({ ...prev, isRecording: false }))}
         />
 
         {sessionState.error && (
@@ -181,6 +163,10 @@ export default function SessionPage() {
         {sessionState.isProcessing && (
           <div className="text-center py-4">
             <div className="animate-pulse text-gray-600">
+              <svg className="w-6 h-6 mx-auto animate-spin" viewBox="0 0 24 24">
+                <circle className="text-gray-300" cx="12" cy="12" r="10" fill="none" strokeWidth="4" />
+                <path className="text-blue-500" fill="none" d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0" />
+              </svg>
               Processing audio...
             </div>
           </div>
@@ -188,8 +174,8 @@ export default function SessionPage() {
 
         {sessionState.transcription && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Transcription</h2>
-            <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+            <h2 className="text-2xl font-semibold text-gray-800">Transcription</h2>
+            <div className="bg-gray-50 p-4 rounded-lg shadow-md whitespace-pre-wrap">
               {sessionState.transcription}
             </div>
           </div>
@@ -197,8 +183,8 @@ export default function SessionPage() {
 
         {sessionState.summary && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Session Summary</h2>
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <h2 className="text-2xl font-semibold text-gray-800">Session Summary</h2>
+            <div className="bg-gray-50 p-4 rounded-lg shadow-md">
               {sessionState.summary}
             </div>
 
@@ -208,7 +194,7 @@ export default function SessionPage() {
 
             <Button
               onClick={handleFinishSession}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 transition duration-300 ease-in-out shadow-lg"
               size="lg"
             >
               Finish Session

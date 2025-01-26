@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "firebase": "firebase"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -47,6 +48,7 @@
     "tailwind-merge": "^2.5.4",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5"
+    "typescript": "^5",
+    "firebase-tools": "^11.0.0"
   }
 }

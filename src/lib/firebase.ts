@@ -19,6 +19,8 @@ if (!firebaseConfig.apiKey) {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+console.log('Firestore DB instance:', db);
+
 const googleProvider = new GoogleAuthProvider();
 
 // Function to assign user roles
