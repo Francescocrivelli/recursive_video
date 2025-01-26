@@ -67,6 +67,7 @@ export default function PatientDashboard() {
 
   return (
     <div className="min-h-screen p-8 bg-background">
+      <Navigation />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">
           {userRole === 'therapist' ? 'All Patient Sessions' : 'Your Therapy Sessions'}

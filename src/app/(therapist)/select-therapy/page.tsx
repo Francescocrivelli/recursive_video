@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Navigation } from '@/components/Navigation';
 
 export default function TherapistSelectTherapy() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export default function TherapistSelectTherapy() {
 
   return (
     <div className="min-h-screen p-8">
+      <Navigation />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Select Therapy Type</h1>
         <p className="mb-4">Welcome, {user?.email}</p>

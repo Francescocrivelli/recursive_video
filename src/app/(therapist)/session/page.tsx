@@ -38,31 +38,48 @@ export default function SessionPage() {
 
   const handleAudioReady = async (audioBlob: Blob) => {
     setSessionState(prev => ({ ...prev, isProcessing: true, error: null }));
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      formData.append('patientId', patientId || 'unknown');
-      formData.append('therapyType', therapyType || 'unknown');
+    const attemptTranscription = async () => {
+      try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob);
+        formData.append('patientId', patientId || 'unknown');
+        formData.append('therapyType', therapyType || 'unknown');
 
-      // Transcribe audio
-      const transcribeResponse = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!transcribeResponse.ok) {
-        const errorData = await transcribeResponse.json();
-        throw new Error(errorData.error || 'Transcription failed');
+        const transcribeResponse = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!transcribeResponse.ok) {
+          const errorData = await transcribeResponse.json();
+          throw new Error(errorData.error || 'Transcription failed');
+        }
+        
+        return await transcribeResponse.json();
+      } catch (error) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+          return attemptTranscription();
+        }
+        throw error;
       }
+    };
+
+    try {
+      // Attempt transcription with retry logic
+      const transcribeData = await attemptTranscription();
+      const transcription = transcribeData.text;
       
-      const { text: transcription } = await transcribeResponse.json();
-      
-      // Update state with transcription immediately
+      // Update state with transcription
       setSessionState(prev => ({
         ...prev,
         transcription,
-        isProcessing: true, // Keep processing for summary
+        isProcessing: true,
       }));
 
       // Generate summary
@@ -72,7 +89,10 @@ export default function SessionPage() {
         body: JSON.stringify({ text: transcription }),
       });
       
-      if (!summarizeResponse.ok) throw new Error('Summary generation failed');
+      if (!summarizeResponse.ok) {
+        const errorData = await summarizeResponse.json();
+        throw new Error(errorData.error || 'Summary generation failed');
+      }
       
       const { summary } = await summarizeResponse.json();
 
@@ -83,11 +103,22 @@ export default function SessionPage() {
       }));
 
     } catch (error) {
-      console.error('Session processing error:', error);
+      console.error('Session processing error:', {
+        context: 'SessionPage - handleAudioReady',
+        error,
+        timestamp: new Date().toISOString(),
+        details: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack
+        } : 'Unknown error'
+      });
+
       setSessionState(prev => ({
         ...prev,
         isProcessing: false,
-        error: 'Failed to process session recording',
+        error: error instanceof Error 
+          ? `Processing failed: ${error.message}`
+          : 'Failed to process session recording'
       }));
     }
   };

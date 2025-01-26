@@ -1,174 +1,98 @@
 'use client';
 
-import { useState } from 'react';
-import { AudioRecorder } from '@/components/AudioRecorder';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
-export default function TherapyPage() {
-  const [transcript, setTranscript] = useState('');
-  const [translation, setTranslation] = useState('');
-  const [summary, setSummary] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string>('');
-
-  const handleAudioReady = async (audioBlob: Blob) => {
-    setIsProcessing(true);
-    setError('');
-    
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      formData.append('patientId', 'test-patient'); // Temporary ID for testing
-      formData.append('therapyType', 'test-therapy'); // Temporary type for testing
-
-      // Handle transcription
-      const transcribeResponse = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!transcribeResponse.ok) {
-        const errorData = await transcribeResponse.json();
-        throw new Error(errorData.error || 'Transcription failed');
-      }
-
-      const transcribeData = await transcribeResponse.json();
-      setTranscript(transcribeData.text);
-      
-      // Handle translation
-      const translateResponse = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: transcribeData.text }),
-      });
-      
-      if (!translateResponse.ok) {
-        const errorData = await translateResponse.json();
-        throw new Error(errorData.error || 'Translation failed');
-      }
-      
-      const translateData = await translateResponse.json();
-      setTranslation(translateData.translatedText);
-
-      // Handle summary
-      const summarizeResponse = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: translateData.translatedText }),
-      });
-      
-      if (!summarizeResponse.ok) {
-        throw new Error('Summary generation failed');
-      }
-      
-      const summarizeData = await summarizeResponse.json();
-      setSummary(summarizeData.summary);
-
-    } catch (error) {
-      console.error('Processing failed:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      setError('');
-      await handleAudioReady(file);
-    } catch (error) {
-      console.error('File upload failed:', error);
-      setError('Failed to process the audio file');
-    }
-  };
+export default function LandingPage() {
+  const router = useRouter();
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex mb-8">
-        <h1 className="text-4xl font-bold">Recursive Video</h1>
-        <div className="flex gap-4">
-          <Button variant="default">Login</Button>
-          <Button variant="outline">Register</Button>
-        </div>
-      </div>
+    <main className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-16">
+        <nav className="flex justify-between items-center mb-16">
+          <h1 className="text-2xl font-bold">Recursive Video</h1>
+          <div className="space-x-4">
+            <Button variant="ghost" onClick={() => router.push('/login')}>
+              Login
+            </Button>
+            <Button onClick={() => router.push('/register')}>
+              Get Started
+            </Button>
+          </div>
+        </nav>
 
-      <div className="container mx-auto space-y-6">
-        <div className="space-y-4">
-          <div className="flex flex-col items-center gap-4">
-            <AudioRecorder 
-              onAudioReady={handleAudioReady}
-              isProcessing={isProcessing}
-            />
-            
-            <div className="text-center">
-              <p className="mb-2">Or upload an audio file</p>
-              <input
-                type="file"
-                accept=".mp3,.wav,.m4a"
-                onChange={handleFileUpload}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-full file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-violet-50 file:text-violet-700
-                  hover:file:bg-violet-100"
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                Accepted formats: MP3, WAV, M4A (max 25MB)
-              </p>
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="space-y-6">
+            <h2 className="text-5xl font-bold leading-tight">
+              Transform Your Therapy Sessions with AI-Powered Insights
+            </h2>
+            <p className="text-xl text-gray-600">
+              Record, transcribe, and analyze therapy sessions automatically. Get valuable insights and summaries to improve patient care.
+            </p>
+            <div className="space-x-4">
+              <Button size="lg" onClick={() => router.push('/register')}>
+                Start Free Trial
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => router.push('/about')}>
+                Learn More
+              </Button>
             </div>
           </div>
           
-          {isProcessing && (
-            <div className="flex justify-center items-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <span className="ml-2 text-blue-500">Processing audio...</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="text-center text-red-500 py-2">
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {transcript && (
-              <div className="space-y-2 col-span-full">
-                <h2 className="text-xl font-semibold">Transcription</h2>
-                <div className="p-4 bg-gray-900 rounded-lg shadow-inner min-h-[200px] whitespace-pre-wrap text-white">
-                  {transcript}
-                </div>
-              </div>
-            )}
-            
-            {translation && (
-              <div className="space-y-2 col-span-full">
-                <h2 className="text-xl font-semibold">English Translation</h2>
-                <div className="p-4 bg-gray-900 rounded-lg shadow-inner min-h-[200px] whitespace-pre-wrap text-white">
-                  {translation}
-                </div>
-              </div>
-            )}
-            
-            {summary && (
-              <div className="space-y-2 col-span-full">
-                <h2 className="text-xl font-semibold">Summary</h2>
-                <div className="p-4 bg-gray-900 rounded-lg shadow-inner min-h-[200px] whitespace-pre-wrap text-white">
-                  {summary}
-                </div>
-              </div>
-            )}
+          <div className="relative h-[400px] bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg">
+            {/* Placeholder for hero image/illustration */}
           </div>
         </div>
       </div>
+
+      {/* Features Section */}
+      <section className="bg-gray-50 py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Why Choose Recursive Video
+          </h2>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <div key={index} className="p-6 bg-white rounded-lg shadow-sm">
+                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-6">
+            Ready to Transform Your Practice?
+          </h2>
+          <p className="text-xl text-gray-600 mb-8">
+            Join therapists worldwide who are already using Recursive Video
+          </p>
+          <Button size="lg" onClick={() => router.push('/register')}>
+            Get Started Now
+          </Button>
+        </div>
+      </section>
     </main>
   );
 }
+
+const features = [
+  {
+    title: "AI-Powered Transcription",
+    description: "Automatically convert therapy sessions into accurate text transcripts in real-time."
+  },
+  {
+    title: "Smart Summaries",
+    description: "Get AI-generated session summaries highlighting key insights and action items."
+  },
+  {
+    title: "Secure & Compliant",
+    description: "Enterprise-grade security and HIPAA compliance to protect sensitive patient data."
+  }
+];

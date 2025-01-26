@@ -20,10 +20,21 @@ export async function POST(request: Request) {
     console.log('Therapy type:', therapyType);
 
     if (!file) {
-      return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'No audio file provided',
+        details: 'The audio file is required for transcription'
+      }, { status: 400 });
     }
 
-    // Convert File to Blob and then to Buffer
+    // Validate file size (25MB limit)
+    const maxSize = 25 * 1024 * 1024; // 25MB in bytes
+    if (file.size > maxSize) {
+      return NextResponse.json({
+        error: 'File too large',
+        details: 'Audio file must be less than 25MB'
+      }, { status: 400 });
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
