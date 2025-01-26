@@ -1,76 +1,112 @@
-// import type { NextApiRequest, NextApiResponse } from 'next';
-// import { NextResponse } from 'next/server';
-// import { OpenAI } from 'openai';
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-// // Check if the API key is set
-// if (!process.env.OPENAI_API_KEY) {
-//   throw new Error('OPENAI_API_KEY is not set');
-// }
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-// const openai = new OpenAI({
-//   apiKey: process.env.OPENAI_API_KEY,
-// });
+interface InsightsResponse {
+  sentiment: string;
+  wordCloudData: string[];
+  speakingTime: { [participant: string]: number };
+}
 
-// console.log('Summarize API Key present:', !!process.env.OPENAI_API_KEY);
+export async function POST(request: Request) {
+  try {
+    const { text } = await request.json();
 
-// export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-//   if (req.method !== 'POST') {
-//     return res.status(405).json({ error: 'Method not allowed' });
-//   }
+    if (!text) {
+      return NextResponse.json({ error: 'Text is required' }, { status: 400 });
+    }
 
-//   try {
-//     const { text } = req.body;
+    // Parallel processing of insights
+    const [sentiment, wordCloudData, speakingTime] = await Promise.all([
+      analyzeSentiment(text),
+      generateWordCloud(text),
+      analyzeSpeakingTime(text)
+    ]);
 
-//     if (!text) {
-//       return res.status(400).json({ error: 'Text is required' });
-//     }
+    const response: InsightsResponse = {
+      sentiment,
+      wordCloudData,
+      speakingTime
+    };
 
-//     // Perform sentiment analysis
-//     const sentiment = await analyzeSentiment(text);
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error('Error generating insights:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate insights' },
+      { status: 500 }
+    );
+  }
+}
 
-//     // Generate word cloud data
-//     const wordCloudData = generateWordCloud(text);
+async function analyzeSentiment(text: string): Promise<string> {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are an expert at analyzing therapy sessions. Provide a brief assessment of the emotional tone and therapeutic progress in the following session transcript. Keep your response to 1-2 sentences.'
+      },
+      {
+        role: 'user',
+        content: text
+      }
+    ],
+    temperature: 0.3,
+  });
 
-//     // Calculate speaking time breakdown
-//     const speakingTime = calculateSpeakingTime(text);
+  return response.choices[0]?.message?.content || 'Unable to analyze sentiment';
+}
 
-//     // Return the insights
-//     res.status(200).json({ summary: 'Sample summary', sentiment, wordCloudData, speakingTime });
-//   } catch (error) {
-//     console.error('Error generating insights:', error);
-//     res.status(500).json({ error: 'Failed to generate insights' });
-//   }
-// }
+function generateWordCloud(text: string): string[] {
+  // Remove common stop words and punctuation
+  const stopWords = new Set(['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at']);
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .filter(word => !stopWords.has(word) && word.length > 2);
 
-// async function analyzeSentiment(text: string): Promise<string> {
-//   const response = await openai.completions.create({
-//     model: 'text-davinci-003',
-//     prompt: `Analyze the sentiment of the following text: ${text}`,
-//     max_tokens: 60,
-//   });
+  // Count word frequencies
+  const wordFreq = words.reduce((acc: {[key: string]: number}, word) => {
+    acc[word] = (acc[word] || 0) + 1;
+    return acc;
+  }, {});
 
-//   return response.choices[0].text.trim();
-// }
+  // Sort by frequency and return top 20 words
+  return Object.entries(wordFreq)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 20)
+    .map(([word]) => word);
+}
 
-// function generateWordCloud(text: string): string[] {
-//   const words = text.split(/\s+/);
-//   const frequencyMap: { [word: string]: number } = {};
+async function analyzeSpeakingTime(text: string): Promise<{ [participant: string]: number }> {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: [
+      {
+        role: 'system',
+        content: 'Analyze the following therapy session transcript and estimate the speaking time distribution between therapist and patient as percentages. Return only the percentages in format: {"Therapist": X, "Patient": Y}'
+      },
+      {
+        role: 'user',
+        content: text
+      }
+    ],
+    temperature: 0.1,
+  });
 
-//   words.forEach(word => {
-//     word = word.toLowerCase();
-//     frequencyMap[word] = (frequencyMap[word] || 0) + 1;
-//   });
-
-//   return Object.entries(frequencyMap)
-//     .sort(([, a], [, b]) => b - a)
-//     .slice(0, 20)
-//     .map(([word]) => word);
-// }
-
-// function calculateSpeakingTime(text: string): { [participant: string]: number } {
-//   // Mock implementation for speaking time breakdown
-//   return {
-//     'Therapist': 60,
-//     'Patient': 40,
-//   };
-// }
+  try {
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content in response');
+    }
+    
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error parsing speaking time analysis:', error);
+    return { "Therapist": 50, "Patient": 50 }; // Fallback to equal distribution
+  }
+}
