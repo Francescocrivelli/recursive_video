@@ -7,9 +7,6 @@ import { auth, googleProvider, getUserRole } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 
-
-
-
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -67,10 +64,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-100 to-purple-100">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold">Welcome Back</h2>
+          <h2 className="mt-6 text-3xl font-bold text-gray-800">Welcome Back</h2>
           <p className="mt-2 text-sm text-gray-600">
             Sign in to access your account
           </p>
@@ -85,7 +82,7 @@ export default function LoginPage() {
 
           <Button
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-2"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -94,6 +91,14 @@ export default function LoginPage() {
               />
             </svg>
             Sign in with Google
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="w-full flex items-center justify-center gap-2 mt-4"
+            onClick={() => router.push('/')}
+          >
+            Home
           </Button>
         </div>
       </div>

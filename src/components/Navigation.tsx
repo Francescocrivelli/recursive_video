@@ -23,7 +23,7 @@ export function Navigation({ showBack = true, showHome = true, onBack }: Navigat
   };
 
   const handleHome = () => {
-    router.push('/select-therapy');
+    router.push('/');
   };
 
   const handleLogout = async () => {
