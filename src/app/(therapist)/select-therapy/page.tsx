@@ -31,22 +31,27 @@ export default function TherapistSelectTherapy() {
   useEffect(() => {
     const fetchPatients = async () => {
       try {
-        const usersCollection = collection(db, 'users'); // Ensure correct collection name
+        const usersCollection = collection(db, 'users');
         const q = query(usersCollection, where('role', '==', 'patient'));
         const usersSnapshot = await getDocs(q);
   
         const usersData: Patient[] = usersSnapshot.docs.map(doc => {
           const data = doc.data();
-  
+          console.log('Raw patient data:', data);
+          
+          // Get email from the data
+          const email = data.email;
+          
           return {
             id: doc.id,
-            name: data.name || 'Unknown', // Prevent undefined errors
+            name: data.displayName || email || 'No name available',
             lastSession: data.lastSession || 'No previous session',
             therapyType: data.therapyType || 'N/A',
             status: data.status || 'Inactive'
           };
         });
   
+        console.log('Processed patients:', usersData);
         setPatients(usersData);
       } catch (error) {
         console.error('Error fetching patients:', error);
@@ -211,7 +216,7 @@ export default function TherapistSelectTherapy() {
                             <span
                               className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                 patient.status === "Active"
-                                  ? "bg-green-100 text-green-800"
+                                  ? "bg-green-100 text-greenx-800"
                                   : "bg-yellow-100 text-yellow-800"
                               }`}
                             >

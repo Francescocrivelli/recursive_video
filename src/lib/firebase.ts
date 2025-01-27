@@ -26,7 +26,15 @@ const googleProvider = new GoogleAuthProvider();
 // Function to assign user roles
 async function assignUserRole(uid: string, role: "therapist" | "patient") {
   const userRef = doc(db, "users", uid);
-  await setDoc(userRef, { role }, { merge: true });
+  const user = auth.currentUser;
+  
+  await setDoc(userRef, { 
+    role,
+    email: user?.email || '',
+    displayName: user?.displayName || user?.email || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 }
 
 // Function to get user role
