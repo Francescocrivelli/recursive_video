@@ -6,7 +6,6 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Navigation } from '@/components/Navigation';
 
-
 interface Session {
   id: string;
   date: string;
@@ -27,12 +26,10 @@ export default function PatientDashboard() {
         let sessionsQuery;
         
         if (userRole === 'therapist') {
-          // Fetch all sessions for therapists
           sessionsQuery = query(
             collection(db, 'sessions')
           );
         } else {
-          // Fetch only patient's sessions
           sessionsQuery = query(
             collection(db, 'sessions'),
             where('patientId', '==', user.uid)
@@ -45,7 +42,6 @@ export default function PatientDashboard() {
           ...doc.data()
         } as Session));
 
-        // Sort sessions by date
         sessionsData.sort((a, b) => 
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
@@ -59,14 +55,14 @@ export default function PatientDashboard() {
     };
 
     fetchSessions();
-  }, [user]);
+  }, [user, userRole]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen p-8 bg-background">
+    <div>
       <Navigation />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">

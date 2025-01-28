@@ -6,22 +6,26 @@ import { Button } from './ui/button';
 interface AudioRecorderProps {
   onAudioReady: (audioBlob: Blob) => void;
   isProcessing: boolean;
-  onStartRecording: () => void;
-  onStopRecording: () => void;
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
 }
 
-export function AudioRecorder({ onAudioReady, isProcessing, onStartRecording, onStopRecording }: AudioRecorderProps) {
+export function AudioRecorder({ 
+  onAudioReady, 
+  isProcessing, 
+  onStartRecording, 
+  onStopRecording 
+}: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [timerInterval, setTimerInterval] = useState(null);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const checkMicrophoneSupport = () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setPermissionError('Your browser does not support audio recording.');
+      console.error('Your browser does not support audio recording.');
       return false;
     }
     return true;
@@ -29,39 +33,39 @@ export function AudioRecorder({ onAudioReady, isProcessing, onStartRecording, on
 
   const startRecording = async () => {
     if (!checkMicrophoneSupport()) return;
+    
     try {
-      setPermissionError(null);
+      onStartRecording?.();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
+      const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm',
         audioBitsPerSecond: 128000
       });
-      const audioChunks = [];
-
+      
       setRecordingTime(0);
       const interval = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
-      setTimerInterval(interval as any);
+      setTimerInterval(interval);
 
-      setMediaRecorder(mediaRecorder);
+      setMediaRecorder(recorder);
       setAudioChunks([]);
 
-      mediaRecorder.ondataavailable = (event) => {
+      recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           setAudioChunks((current) => [...current, event.data]);
         }
       };
 
       // Request data every 250ms to ensure we capture everything
-      mediaRecorder.start(250);
+      recorder.start(250);
       setIsRecording(true);
     } catch (error) {
       console.error('Failed to start recording:', error);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        setPermissionError('Microphone access was denied. Please allow microphone access in your browser settings.');
+        console.error('Microphone access was denied. Please allow microphone access in your browser settings.');
       } else {
-        setPermissionError('An error occurred while trying to access the microphone.');
+        console.error('An error occurred while trying to access the microphone.');
       }
     }
   };
@@ -69,6 +73,7 @@ export function AudioRecorder({ onAudioReady, isProcessing, onStartRecording, on
   const stopRecording = async () => {
     if (!mediaRecorder) return;
 
+    onStopRecording?.();
     mediaRecorder.stop();
     setIsRecording(false);
 

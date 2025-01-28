@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
@@ -16,12 +16,16 @@ if (!firebaseConfig.apiKey) {
   console.error('Firebase configuration is missing or incorrect');
 }
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
-console.log('Firestore DB instance:', db);
 
-const googleProvider = new GoogleAuthProvider();
+// Only create provider on client side
+let googleProvider: GoogleAuthProvider;
+if (typeof window !== 'undefined') {
+  googleProvider = new GoogleAuthProvider();
+}
 
 // Function to assign user roles
 async function assignUserRole(uid: string, role: "therapist" | "patient") {
@@ -64,6 +68,7 @@ async function createPatient(patientData: {
 }
 
 export { 
+  app,
   auth, 
   db, 
   googleProvider, 
@@ -71,4 +76,3 @@ export {
   getUserRole, 
   createPatient 
 };
-

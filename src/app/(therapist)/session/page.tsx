@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -31,7 +31,8 @@ interface SessionState {
   insights: SessionInsights | null;
 }
 
-export default function SessionPage() {
+// Component that uses useSearchParams
+function SessionContent() {
   const [sessionState, setSessionState] = useState<SessionState>({
     transcription: '',
     summary: '',
@@ -336,5 +337,21 @@ export default function SessionPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Main page component wrapped in Suspense
+export default function SessionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-pulse space-y-4 text-center">
+          <Brain className="w-12 h-12 mx-auto text-blue-500" />
+          <h2 className="text-xl font-semibold text-gray-900">Loading Session...</h2>
+        </div>
+      </div>
+    }>
+      <SessionContent />
+    </Suspense>
   );
 }

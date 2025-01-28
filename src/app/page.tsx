@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 
 export default function LandingPage() {
   const router = useRouter();
-  const pathname = usePathname();
   const { user, userRole, isInitialized } = useAuth();
 
   // useEffect(() => {

@@ -23,7 +23,6 @@ export default function TherapistSelectTherapy() {
   const router = useRouter();
   const [selectedTherapy, setSelectedTherapy] = useState('');
   const [selectedPatient, setSelectedPatient] = useState('');
-  const [showPatientList, setShowPatientList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('therapy');
   const [patients, setPatients] = useState<Patient[]>([]);
