@@ -227,7 +227,7 @@ export default function TherapistSelectTherapy() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => router.push(`/patient/${patient.id}/dashboard`)}
+                                onClick={() => router.push(`/${patient.id}/dashboard`)}
                               >
                                 View
                               </Button>
