@@ -135,7 +135,10 @@ export default function TherapistSelectTherapy() {
                     className={`p-6 rounded-xl cursor-pointer transition-all ${therapy.color} ${
                       selectedTherapy === therapy.id ? 'ring-2 ring-blue-500' : ''
                     }`}
-                    onClick={() => setSelectedTherapy(therapy.id)}
+                    onClick={() => {
+                      setSelectedTherapy(therapy.id);
+                      setActiveTab('patients');
+                    }}
                   >
                     <div className="text-4xl mb-4">{therapy.icon}</div>
                     <h3 className="text-lg font-semibold mb-2">{therapy.title}</h3>
