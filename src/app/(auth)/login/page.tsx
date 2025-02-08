@@ -7,6 +7,10 @@ import { auth, googleProvider, getUserRole } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 
+// Hooks are functions that let you "hook into" React state and lifecycle features
+// useState: Manages local state variables
+// useRouter: Provides navigation methods and router state
+// useAuth: Custom hook that provides authentication context
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);

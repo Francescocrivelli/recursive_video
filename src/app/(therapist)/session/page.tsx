@@ -31,8 +31,7 @@ interface SessionState {
   insights: SessionInsights | null;
 }
 
-// Component that uses useSearchParams
-function SessionContent() {
+function SessionPageContent() {
   const [sessionState, setSessionState] = useState<SessionState>({
     transcription: '',
     summary: '',
@@ -340,18 +339,10 @@ function SessionContent() {
   );
 }
 
-// Main page component wrapped in Suspense
 export default function SessionPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-pulse space-y-4 text-center">
-          <Brain className="w-12 h-12 mx-auto text-blue-500" />
-          <h2 className="text-xl font-semibold text-gray-900">Loading Session...</h2>
-        </div>
-      </div>
-    }>
-      <SessionContent />
+    <Suspense fallback={<div>Loading...</div>}>
+      <SessionPageContent />
     </Suspense>
   );
 }
